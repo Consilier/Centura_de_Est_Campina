@@ -69,6 +69,8 @@ select.tool{font:500 11.5px/1 var(--ui);border:1px solid var(--line);border-radi
   white-space:nowrap;pointer-events:none;font-family:var(--ui)}
 .leaflet-tooltip.maplabel:before{display:none}
 .leaflet-tooltip.maplabel .lbtxt{display:inline-block;transform-origin:center center}
+svg.curvedlabels{overflow:visible}
+svg.curvedlabels text{dominant-baseline:middle}
 .idsec{border-bottom:1px solid #eef1f4}
 .idsec:last-child{border-bottom:0}
 .idsec>summary{cursor:pointer;padding:8px 14px;font-size:11px;font-weight:600;letter-spacing:.06em;
@@ -931,6 +933,7 @@ function done() {
     document.getElementById("loading").style.display = "none";
     restackNow();
     updateLabels();
+    updateCurvedLabels();
   }
 }
 
@@ -972,6 +975,7 @@ function refill(e) {
   if (e.clustered) { e.layer.clearLayers(); e.layer.addLayer(e.inner); }
   restack();
   updateLabels();
+  updateCurvedLabels();
 }
 
 CFG.layers.forEach((cfg, i) => {
@@ -1243,6 +1247,7 @@ CFG.layers.forEach((cfg, i) => {
     box.classList.toggle("off", !ev.target.checked);
     ev.target.checked ? add() : rm();
     updateLabels();
+    updateCurvedLabels();
   });
 
   e.identify = !!cfg.popup;
@@ -1288,6 +1293,165 @@ function countClasses(e, box) {
 }
 
 
+
+
+/* etichete curbate: text pe traseu --------------------------------------- */
+// Leaflet nu poate așeza text pe o linie, așa că se folosește un strat SVG
+// propriu, cu <textPath>. Coordonatele sunt în puncte de container, iar stratul
+// e ancorat în overlayPane, deci se mută odată cu harta la panoramare.
+
+const SVGNS = "http://www.w3.org/2000/svg";
+let curvedSvg = null, curvedDefs = null, curvedSeq = 0;
+
+function ensureCurvedSvg() {
+  if (curvedSvg) return curvedSvg;
+  curvedSvg = document.createElementNS(SVGNS, "svg");
+  curvedSvg.setAttribute("class", "curvedlabels");
+  curvedSvg.style.position = "absolute";
+  curvedSvg.style.pointerEvents = "none";
+  curvedSvg.style.zIndex = "620";
+  curvedDefs = document.createElementNS(SVGNS, "defs");
+  curvedSvg.appendChild(curvedDefs);
+  map.getPane("overlayPane").appendChild(curvedSvg);
+  return curvedSvg;
+}
+
+function clearCurved() {
+  if (!curvedSvg) return;
+  while (curvedSvg.lastChild) curvedSvg.removeChild(curvedSvg.lastChild);
+  curvedDefs = document.createElementNS(SVGNS, "defs");
+  curvedSvg.appendChild(curvedDefs);
+}
+
+// porțiunea de traseu pe care încape textul, în puncte de container
+function pathForLabel(geom, needed) {
+  const parts = geom.type === "LineString" ? [geom.coordinates]
+              : (geom.type === "MultiLineString" ? geom.coordinates : null);
+  if (!parts) return null;
+  const size = map.getSize();
+  const margin = 40;
+  let best = null;
+
+  parts.forEach(part => {
+    const pts = part.map(c => map.latLngToContainerPoint(L.latLng(c[1], c[0])));
+    // se păstrează doar segmentele din zona vizibilă, cu puțin margine
+    let run = [], runLen = 0;
+    const flush = () => {
+      if (run.length > 1 && runLen >= needed && (!best || runLen > best.len)) {
+        best = { pts: run.slice(), len: runLen };
+      }
+      run = [];
+      runLen = 0;
+    };
+    pts.forEach((p, i) => {
+      const inside = p.x > -margin && p.y > -margin &&
+                     p.x < size.x + margin && p.y < size.y + margin;
+      if (!inside) { flush(); return; }
+      if (run.length) runLen += Math.hypot(p.x - run[run.length - 1].x,
+                                           p.y - run[run.length - 1].y);
+      run.push(p);
+    });
+    flush();
+  });
+  return best;
+}
+
+function curvedPathData(pts, needed) {
+  // se taie traseul la lungimea necesară, centrat
+  let total = 0;
+  const lens = [];
+  for (let i = 1; i < pts.length; i++) {
+    const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    lens.push(d);
+    total += d;
+  }
+  let start = Math.max(0, (total - needed) / 2);
+  let acc = 0, out = [];
+  for (let i = 1; i < pts.length; i++) {
+    const segStart = acc, segEnd = acc + lens[i - 1];
+    const from = Math.max(start, segStart), to = Math.min(start + needed, segEnd);
+    if (to > from) {
+      const t0 = (from - segStart) / lens[i - 1], t1 = (to - segStart) / lens[i - 1];
+      const a = pts[i - 1], b = pts[i];
+      const pa = { x: a.x + (b.x - a.x) * t0, y: a.y + (b.y - a.y) * t0 };
+      const pb = { x: a.x + (b.x - a.x) * t1, y: a.y + (b.y - a.y) * t1 };
+      if (!out.length) out.push(pa);
+      out.push(pb);
+    }
+    acc = segEnd;
+  }
+  if (out.length < 2) out = pts.slice();
+  // textul nu trebuie să ajungă cu susul în jos
+  if (out[out.length - 1].x < out[0].x) out.reverse();
+  return out;
+}
+
+function drawCurvedLabel(text, geom, style, cls) {
+  const size = style.size || 11;
+  const needed = text.length * size * 0.58;
+  const found = pathForLabel(geom, needed);
+  if (!found) return false;
+
+  const pts = curvedPathData(found.pts, needed);
+  const id = "cp" + (++curvedSeq);
+  const path = document.createElementNS(SVGNS, "path");
+  path.setAttribute("id", id);
+  path.setAttribute("fill", "none");
+  path.setAttribute("d", "M" + pts.map(p => p.x.toFixed(1) + "," + p.y.toFixed(1)).join("L"));
+  curvedDefs.appendChild(path);
+
+  const el = document.createElementNS(SVGNS, "text");
+  el.setAttribute("class", cls);
+  el.setAttribute("dy", (size * 0.35).toFixed(1));
+  const tp = document.createElementNS(SVGNS, "textPath");
+  tp.setAttributeNS("http://www.w3.org/1999/xlink", "href", "#" + id);
+  tp.setAttribute("href", "#" + id);
+  tp.setAttribute("startOffset", "50%");
+  tp.setAttribute("text-anchor", "middle");
+  tp.textContent = text;
+  el.appendChild(tp);
+  curvedSvg.appendChild(el);
+  return true;
+}
+
+function updateCurvedLabels() {
+  const layersWithCurved = entries.filter(e => e.cfg.labels && e.cfg.labels.curved &&
+    e.kind === "vector" && e.raw && e.layer && map.hasLayer(e.layer));
+  if (!layersWithCurved.length) {
+    if (curvedSvg) clearCurved();
+    return;
+  }
+  ensureCurvedSvg();
+  clearCurved();
+
+  const size = map.getSize();
+  const corner = map.containerPointToLayerPoint([0, 0]);
+  L.DomUtil.setPosition(curvedSvg, corner);
+  curvedSvg.setAttribute("width", size.x);
+  curvedSvg.setAttribute("height", size.y);
+  curvedSvg.setAttribute("viewBox", "0 0 " + size.x + " " + size.y);
+
+  layersWithCurved.forEach((e, index) => {
+    const i = entries.indexOf(e);
+    const s = e.cfg.labels;
+    const zoom = map.getZoom();
+    if (s.minScale && zoom < zoomForScale(s.minScale)) return;
+    if (s.maxScale && zoom > zoomForScale(s.maxScale)) return;
+    const data = visibleData(e);
+    if (!data) return;
+    let shown = 0;
+    const max = s.max || 600;
+    data.features.forEach(f => {
+      if (shown >= max) return;
+      const props = f.properties || {};
+      if (!props._l) return;
+      const rules = s.rules || [];
+      const cls = "curvedlb" + i + (props._lk ? " curvedlb" + i + "r" + props._lk : "");
+      if (drawCurvedLabel(String(props._l), f.geometry,
+                          (props._lk && rules[props._lk]) || s, cls)) shown++;
+    });
+  });
+}
 
 /* poziție kilometrică pe drumuri ----------------------------------------- */
 // Calculul se face în Stereo 70: proiecție metrică, deci distanțele de-a lungul
@@ -1602,6 +1766,10 @@ function applyClip() {
 // Etichetele nu pot fi decupate prin CSS, fiindcă pane-ul care le conține nu are
 // dimensiune; se ascund una câte una, după poziția lor față de linia de swipe.
 function clipLabels(e, i) {
+  if (e.cfg.labels && e.cfg.labels.curved && curvedSvg) {
+    // etichetele pe traseu se redesenează cu decupaj, nu se ascund una câte una
+    curvedSvg.style.clipPath = "";
+  }
   const tips = e.activeLabels;
   if (!tips || !tips.length) return;
   const cut = swipeMode === 1 ? map.getSize().x * swipePos : map.getSize().y * swipePos;
@@ -1874,6 +2042,19 @@ document.getElementById("tcsv").addEventListener("click", () => {
 const labelCss = [];
 const labelFallback = [];
 
+function curvedRuleCss(s, selector) {
+  let rule = selector + "{fill:" + s.color + ";font-size:" + s.size + "px;" +
+    (s.bold ? "font-weight:700;" : "font-weight:500;") +
+    (s.italic ? "font-style:italic;" : "") +
+    (s.family ? "font-family:'" + s.family + "',var(--ui);" : "font-family:var(--ui);");
+  if (s.halo && s.haloW > 0) {
+    // în SVG conturul se desenează corect sub glifă, spre deosebire de text HTML
+    rule += "stroke:" + s.halo + ";stroke-width:" + (s.haloW * 2) +
+            "px;paint-order:stroke fill;stroke-linejoin:round;";
+  }
+  return rule + "}";
+}
+
 function labelRuleCss(s, selector) {
   let rule = selector + "{color:" + s.color + ";font-size:" + s.size + "px;" +
     (s.bold ? "font-weight:700;" : "font-weight:500;") +
@@ -1903,6 +2084,13 @@ CFG.layers.forEach((cfg, i) => {
     if (k === 0) return;
     labelCss.push(labelRuleCss(rs, ".lb" + i + "r" + k));
   });
+  if (cfg.labels.curved) {
+    labelCss.push(curvedRuleCss(cfg.labels, "text.curvedlb" + i));
+    (cfg.labels.rules || []).forEach((rs, k) => {
+      if (k === 0) return;
+      labelCss.push(curvedRuleCss(rs, "text.curvedlb" + i + "r" + k));
+    });
+  }
 });
 if ((labelCss.length || labelFallback.length) &&
     typeof document.head !== "undefined" && document.head) {
@@ -2064,6 +2252,7 @@ function updateLabels() {
   entries.forEach((e, i) => {
     const s = e.cfg.labels;
     if (!s || e.kind !== "vector" || e.clustered) return clearLabels(e);
+    if (s.curved) return clearLabels(e);   // se desenează pe traseu, separat
     if (!e.layer || !map.hasLayer(e.layer)) return clearLabels(e);
     if (s.minScale && zoom < zoomForScale(s.minScale)) return clearLabels(e);
     if (s.maxScale && zoom > zoomForScale(s.maxScale)) return clearLabels(e);
@@ -2148,6 +2337,7 @@ map.on("zoomend viewreset", () => {
   }
 });
 map.on("zoomend moveend viewreset", updateLabels);
+map.on("zoomend moveend viewreset", updateCurvedLabels);
 
 /* coordonate ------------------------------------------------------------ */
 const fmt = n => n.toLocaleString("ro-RO", { maximumFractionDigits: 0 });
