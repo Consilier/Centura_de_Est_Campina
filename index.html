@@ -209,6 +209,29 @@ svg.curvedlabels text{dominant-baseline:middle}
 #colorcard .act button{font:500 12px var(--ui);border:1px solid var(--line);background:#fff;
   border-radius:2px;padding:7px 14px;cursor:pointer}
 #colorcard .act button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+#synctools{display:none;gap:5px;padding:7px 10px;border-top:1px solid var(--line);
+  align-items:center;flex-wrap:wrap}
+#synctools.on{display:flex}
+#synctools button{font:500 10.5px var(--ui);border:1px solid var(--line);background:#fff;
+  border-radius:2px;padding:5px 8px;cursor:pointer}
+#synctools button:hover{border-color:var(--accent);color:var(--accent)}
+#syncstatus{font-family:var(--mono);font-size:9.5px;color:var(--muted);flex:1 0 100%}
+
+#tokendlg{position:absolute;inset:0;z-index:2100;background:rgba(16,24,32,.45);
+  display:none;align-items:center;justify-content:center}
+#tokendlg.on{display:flex}
+#tokencard{background:var(--panel);border:1px solid var(--line);border-radius:3px;
+  box-shadow:var(--shadow);padding:16px 18px;width:330px;max-width:92%}
+#tokencard h2{margin:0 0 8px;font-size:13px;font-weight:600}
+#tokencard p{margin:0 0 10px;font-size:12px;line-height:1.45;color:#444}
+#tokencard p.hint{font-size:11px;color:var(--muted)}
+#tokencard input{width:100%;font:400 12px var(--mono);border:1px solid var(--line);
+  border-radius:2px;padding:7px 9px;margin-bottom:10px}
+#tokencard .act{display:flex;gap:8px;justify-content:flex-end}
+#tokencard .act button{font:500 12px var(--ui);border:1px solid var(--line);background:#fff;
+  border-radius:2px;padding:7px 14px;cursor:pointer}
+#tokencard .act button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+
 #drawtools button:disabled{opacity:.4;cursor:default;border-color:var(--line);color:var(--muted)}
 #drawlist{overflow-y:auto;flex:1;max-height:240px}
 .drawrow{padding:7px 12px;border-bottom:1px solid #f1f4f7;cursor:pointer;
@@ -426,7 +449,25 @@ svg.curvedlabels text{dominant-baseline:middle}
     <button id="drawcsv" title="Vârfuri în Stereo 70, pentru tabel">CSV</button>
     <button id="drawclear" title="Șterge tot">Șterge</button>
   </div>
+  <div id="synctools">
+    <button id="syncsave" title="Trimite desenul în repository">Salvează în repo</button>
+    <button id="syncload" title="Aduce desenele salvate de alții">Adu din repo</button>
+    <span id="syncstatus"></span>
+  </div>
 </aside>
+
+<div id="tokendlg"><div id="tokencard">
+  <h2>Token GitHub</h2>
+  <p id="tokenmsg"></p>
+  <input type="password" id="tokeninput" placeholder="ghp_… / github_pat_…"
+         autocomplete="off">
+  <p class="hint">Token-ul rămâne doar în acest browser și nu este inclus în pagină.
+    Are nevoie de drept de scriere („Contents") pe repository.</p>
+  <div class="act">
+    <button id="tokencancel">Anulează</button>
+    <button class="pri" id="tokenok">Continuă</button>
+  </div>
+</div></div>
 <aside id="info">
   <div id="ihead" title="Trage pentru a muta fereastra, dublu-clic pentru poziția inițială">
     <h2>Informații</h2><button id="iclose">Închide</button></div>
@@ -511,7 +552,7 @@ svg.curvedlabels text{dominant-baseline:middle}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
 
 <script>
-const CFG = {"title": "Centura de Est  Campina", "subtitle": "", "bounds": [[44.687289979548694, 25.446680673111924], [45.525408456200076, 26.6287057160876]], "initialBounds": [[45.11033082653376, 25.755711713087948], [45.121695373203124, 25.78194232175866]], "basemap": "osm", "infoDefault": "popup", "widgets": {"measure": true, "fullscreen": true, "minimap": false, "locate": true, "search": true, "print": true, "draw": true}, "layers": [{"name": "Puncte_Centura de Est", "type": "geojson", "file": "data/puncte_centura_de_est.geojson", "geom": "point", "visible": true, "count": 4, "popup": true, "popupFields": ["text"], "km": null, "legend": [{"label": "Puncte interectii Centura de Est", "g": "point", "s": {"f": "#db1e2a", "fo": 1.0, "s": "#801119", "so": 1.0, "w": 1.51, "r": 2.0}, "img": {"src": "data/symbols/puncte_centura_de_est_0.png", "w": 12, "h": 12}}], "noLegend": true, "labels": {"size": 20.0, "color": "#ed5910", "family": "Arial", "bold": true, "italic": true, "halo": "#000000", "haloW": 3.8, "place": {"dir": "right", "dx": 18.8976377955, "dy": -7.5590551182}, "max": 1500, "angled": false, "inside": true}, "cluster": false, "opacity": 1.0}, {"name": "Tronson_Centura de Est", "type": "geojson", "file": "data/tronson_centura_de_est.geojson", "geom": "line", "visible": true, "count": 5, "popup": true, "popupFields": ["id"], "km": null, "legend": [{"label": "Tronson Centura de Est", "g": "line", "s": {"f": "#ff6011", "fo": 0.0, "s": "#000000", "so": 1.0, "w": 5.67, "r": 5.0, "st": [{"s": "#000000", "so": 1.0, "w": 5.67, "cap": "round", "join": "round"}, {"s": "#ff6011", "so": 1.0, "w": 4.02, "cap": "round", "join": "round"}], "cap": "round", "join": "round", "ml": true}, "img": {"src": "data/symbols/tronson_centura_de_est_0.png", "w": 20, "h": 20}}], "noLegend": true, "labels": null, "cluster": false, "opacity": 1.0}, {"name": "conducte_MHC", "type": "geojson", "file": "data/conducte_mhc.geojson", "geom": "polygon", "visible": true, "count": 12, "popup": true, "popupFields": ["id"], "km": null, "legend": [{"label": "conducte_MHC", "g": "polygon", "s": {"f": "#0000ff", "fo": 0.3, "s": "#0000ff", "so": 1.0, "w": 1.89, "r": 5.0}, "img": {"src": "data/symbols/conducte_mhc_0.png", "w": 20, "h": 20}}], "noLegend": true, "labels": null, "cluster": false, "opacity": 1.0}, {"name": "limite_UAT", "type": "geojson", "file": "data/limite_uat.geojson", "geom": "polygon", "visible": true, "count": 104, "popup": true, "popupFields": ["NAME"], "km": null, "legend": [{"label": "limite_UAT", "g": "polygon", "s": {"f": "#ffffff", "fo": 0.0, "s": "#ffffff", "so": 1.0, "w": 5.67, "r": 5.0, "st": [{"s": "#ffffff", "so": 1.0, "w": 5.67, "cap": "square", "join": "bevel"}, {"s": "#aa0eed", "so": 1.0, "w": 3.78, "d": "6,4", "cap": "square", "join": "bevel"}], "ptile": {"src": "data/symbols/limite_uat_0_fill.png", "size": 64}}, "img": {"src": "data/symbols/limite_uat_0.png", "w": 20, "h": 20}}], "noLegend": true, "labels": {"size": 13.3, "color": "#aa0eed", "family": "Open Sans", "bold": true, "italic": true, "halo": "#d5d5d5", "haloW": 3.8, "max": 1500, "angled": false, "inside": true}, "cluster": false, "opacity": 1.0}, {"name": "Risc_inundatii_T100_unit — T100", "type": "geojson", "file": "data/risc_inundatii_t100_unit_t100.geojson", "geom": "polygon", "visible": true, "count": 51, "popup": true, "popupFields": ["name"], "km": null, "legend": [{"label": "Risc_inundatii_T100_unit — T100", "g": "polygon", "s": {"f": "#00afff", "fo": 0.0, "s": "#00afff", "so": 1.0, "w": 2.27, "r": 5.0, "p": {"kind": "dots", "dx": 9.07, "dy": 9.07, "color": "#00afff", "opacity": 1.0, "radius": 1.89}}, "img": {"src": "data/symbols/risc_inundatii_t100_unit_t100_0.png", "w": 20, "h": 20}}], "noLegend": true, "labels": null, "cluster": false, "opacity": 1.0}, {"name": "Risc_alunecari — zone_risc_alunecari", "type": "geojson", "file": "data/risc_alunecari_zone_risc_alunecari.geojson", "geom": "polygon", "visible": true, "count": 1970, "popup": true, "popupFields": ["UAT", "Zona"], "km": null, "legend": [], "noLegend": true, "labels": null, "cluster": false, "opacity": 1.0}, {"name": "SondeAbandonate", "type": "geojson", "file": "data/sondeabandonate.geojson", "geom": "polygon", "visible": true, "count": 1, "popup": true, "popupFields": ["CURRENT_ST"], "km": null, "legend": [{"label": "SondeAbandonate", "g": "polygon", "s": {"f": "#ff00d2", "fo": 0.2, "s": "#ff00d2", "so": 1.0, "w": 2.27, "r": 5.0}, "img": {"src": "data/symbols/sondeabandonate_0.png", "w": 20, "h": 20}}], "noLegend": true, "labels": null, "cluster": false, "opacity": 1.0}, {"name": "ZonaObiective", "type": "geojson", "file": "data/zonaobiective.geojson", "geom": "polygon", "visible": true, "count": 1, "popup": true, "popupFields": ["layer"], "km": null, "legend": [{"label": "ZonaObiective", "g": "polygon", "s": {"f": "#ec9000", "fo": 0.2, "s": "#ec9000", "so": 1.0, "w": 2.27, "r": 5.0}, "img": {"src": "data/symbols/zonaobiective_0.png", "w": 20, "h": 20}}], "noLegend": true, "labels": null, "cluster": false, "opacity": 1.0}, {"name": "LEA", "type": "geojson", "file": "data/lea.geojson", "geom": "line", "visible": true, "count": 8, "popup": true, "popupFields": ["Denumire", "Tip", "Observatii"], "km": null, "legend": [{"label": "LEA", "g": "line", "s": {"f": "#db1e2a", "fo": 0.0, "s": "#db1e2a", "so": 1.0, "w": 2.49, "r": 5.0, "d": "2.5,7.6", "cap": "round", "join": "round"}, "img": {"src": "data/symbols/lea_0.png", "w": 20, "h": 20}}], "noLegend": true, "labels": {"size": 13.3, "color": "#323232", "family": "Open Sans", "bold": false, "italic": true, "halo": "#fafafa", "haloW": 3.8, "max": 1500, "angled": true, "curved": true, "inside": true}, "cluster": false, "opacity": 1.0}, {"name": "Statii_electrice", "type": "geojson", "file": "data/statii_electrice.geojson", "geom": "polygon", "visible": true, "count": 2, "popup": true, "popupFields": ["Denumire", "Observatii"], "km": null, "legend": [{"label": "Statii_electrice", "g": "polygon", "s": {"f": "#b5b4b4", "fo": 0.5, "s": "#232323", "so": 1.0, "w": 0.98, "r": 5.0}, "img": {"src": "data/symbols/statii_electrice_0.png", "w": 20, "h": 20}}], "noLegend": true, "labels": {"size": 13.3, "color": "#323232", "family": "Open Sans", "bold": false, "italic": true, "halo": "#fafafa", "haloW": 3.8, "place": {"dir": "right", "dx": 6.0, "dy": -2.4000000000000004}, "max": 1500, "angled": false, "inside": true}, "cluster": false, "opacity": 1.0}, {"name": "Zone_culoar", "type": "geojson", "file": "data/zone_culoar.geojson", "geom": "polygon", "visible": true, "count": 10, "popup": true, "popupFields": ["Denumire"], "km": null, "legend": [{"label": "Zone_culoar", "g": "polygon", "s": {"f": "#00feff", "fo": 0.3, "s": "#00feff", "so": 1.0, "w": 1.89, "r": 5.0}, "img": {"src": "data/symbols/zone_culoar_0.png", "w": 20, "h": 20}}], "noLegend": true, "labels": null, "cluster": false, "opacity": 1.0}, {"type": "xyz", "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "maxZoom": 19, "minZoom": 0, "name": "OSM Standard", "visible": true, "opacity": 1.0}]};
+const CFG = {"title": "Centura de Est  Campina", "subtitle": "", "bounds": [[44.6948397033275, 25.45255309568129], [45.52256966410797, 26.609985177716872]], "initialBounds": [[44.951785227936526, 26.166843218351612], [44.95381436582427, 26.17089485362777]], "basemap": "osm", "infoDefault": "popup", "sync": null, "widgets": {"measure": true, "fullscreen": true, "minimap": false, "locate": true, "search": true, "print": true, "draw": true}, "layers": [{"name": "Transgaz_SRM_SCV_SPC_PM", "type": "geojson", "file": "data/transgaz_srm_scv_spc_pm.geojson", "geom": "point", "visible": true, "count": 95, "popup": true, "popupFields": ["tip_retea", "stare", "operator", "adancime", "detalii"], "km": null, "legend": [{"label": "PM - E.T. București", "g": "point", "s": {"f": "#beb297", "fo": 1.0, "s": "#232323", "so": 1.0, "w": 0.0, "r": 9.45, "ic": true, "icon": {"src": "data/symbols/transgaz_srm_scv_spc_pm_0.png", "w": 24, "h": 24}}, "img": {"src": "data/symbols/transgaz_srm_scv_spc_pm_0.png", "w": 24, "h": 24}}, {"label": "SCV - E.T. București", "g": "point", "s": {"f": "#e77148", "fo": 1.0, "s": "#232323", "so": 1.0, "w": 0.0, "r": 13.23, "ic": true, "icon": {"src": "data/symbols/transgaz_srm_scv_spc_pm_1.png", "w": 32, "h": 32}}, "img": {"src": "data/symbols/transgaz_srm_scv_spc_pm_1.png", "w": 32, "h": 32}}, {"label": "SPC - E.T. Brașov", "g": "point", "s": {"f": "#ff9e17", "fo": 1.0, "s": "#232323", "so": 1.0, "w": 0.0, "r": 9.45, "ic": true, "icon": {"src": "data/symbols/transgaz_srm_scv_spc_pm_2.png", "w": 24, "h": 24}}, "img": {"src": "data/symbols/transgaz_srm_scv_spc_pm_2.png", "w": 24, "h": 24}}, {"label": "SRM - E.T. Brașov", "g": "point", "s": {"f": "#a47158", "fo": 1.0, "s": "#232323", "so": 1.0, "w": 0.0, "r": 9.45, "ic": true, "icon": {"src": "data/symbols/transgaz_srm_scv_spc_pm_4.png", "w": 24, "h": 24}}, "img": {"src": "data/symbols/transgaz_srm_scv_spc_pm_4.png", "w": 24, "h": 24}}], "noLegend": false, "labels": null, "cluster": false, "opacity": 1.0}, {"name": "Transgaz_imprejuiri", "type": "geojson", "file": "data/transgaz_imprejuiri.geojson", "geom": "polygon", "visible": true, "count": 127, "popup": true, "popupFields": ["stare", "operator", "detalii"], "km": null, "legend": [{"label": "Împrejmuiri - E.T. Brașov", "g": "polygon", "s": {"f": "#4daf4a", "fo": 0.0, "s": "#4daf4a", "so": 1.0, "w": 3.63, "r": 5.0, "ptile": {"src": "data/symbols/transgaz_imprejuiri_0_fill.png", "size": 64}}, "img": {"src": "data/symbols/transgaz_imprejuiri_0.png", "w": 20, "h": 20}}], "noLegend": false, "labels": null, "cluster": false, "opacity": 1.0}, {"name": "Transgaz_conducte", "type": "geojson", "file": "data/transgaz_conducte.geojson", "geom": "line", "visible": true, "count": 395, "popup": true, "popupFields": ["tip_retea", "stare", "operator", "adancime", "detalii"], "km": null, "legend": [{"label": "Conductă convenție exploatare - E.T. București", "g": "line", "s": {"f": "#dc10a2", "fo": 0.0, "s": "#dc10a2", "so": 1.0, "w": 3.78, "r": 5.0, "cap": "square", "join": "bevel"}, "img": {"src": "data/symbols/transgaz_conducte_0.png", "w": 20, "h": 20}}, {"label": "Conductă terți - E.T. București", "g": "line", "s": {"f": "#5f54dc", "fo": 0.0, "s": "#5f54dc", "so": 1.0, "w": 3.78, "r": 5.0, "cap": "square", "join": "bevel"}, "img": {"src": "data/symbols/transgaz_conducte_1.png", "w": 20, "h": 20}}, {"label": "Conductă transport - E.T. Brașov", "g": "line", "s": {"f": "#232323", "fo": 0.0, "s": "#232323", "so": 1.0, "w": 4.54, "r": 5.0, "st": [{"s": "#232323", "so": 1.0, "w": 4.54, "cap": "square", "join": "bevel"}, {"s": "#ffff0f", "so": 1.0, "w": 3.02, "cap": "square", "join": "bevel"}], "cap": "square", "join": "bevel", "ml": true}, "img": {"src": "data/symbols/transgaz_conducte_2.png", "w": 20, "h": 20}}, {"label": "Racord - E.T. Brașov", "g": "line", "s": {"f": "#af5800", "fo": 0.0, "s": "#af5800", "so": 1.0, "w": 3.78, "r": 5.0, "cap": "square", "join": "bevel"}, "img": {"src": "data/symbols/transgaz_conducte_4.png", "w": 20, "h": 20}}, {"label": "Tehnologic - E.T. Brașov", "g": "line", "s": {"f": "#ffc84f", "fo": 0.0, "s": "#ffc84f", "so": 1.0, "w": 3.78, "r": 5.0, "cap": "square", "join": "bevel"}, "img": {"src": "data/symbols/transgaz_conducte_6.png", "w": 20, "h": 20}}], "noLegend": false, "labels": null, "cluster": false, "opacity": 1.0}, {"name": "limita_judet", "type": "geojson", "file": "data/limita_judet.geojson", "geom": "polygon", "visible": true, "count": 1, "popup": true, "popupFields": ["fid", "area", "perimeter"], "km": null, "legend": [{"label": "limita_judet", "g": "polygon", "s": {"f": "#3579b1", "fo": 0.0, "s": "#3579b1", "so": 1.0, "w": 7.56, "r": 5.0, "st": [{"s": "#3579b1", "so": 1.0, "w": 7.56, "cap": "square", "join": "bevel"}, {"s": "#b5b4b4", "so": 1.0, "w": 3.78, "d": "18.9,7.6", "cap": "square", "join": "bevel"}], "ptile": {"src": "data/symbols/limita_judet_0_fill.png", "size": 64}}, "img": {"src": "data/symbols/limita_judet_0.png", "w": 20, "h": 20}}], "noLegend": false, "labels": null, "cluster": false, "opacity": 1.0}, {"name": "limite_UAT", "type": "geojson", "file": "data/limite_uat.geojson", "geom": "polygon", "visible": true, "count": 104, "popup": true, "popupFields": ["NAME", "gaze"], "km": null, "legend": [{"label": "limite_UAT", "g": "polygon", "s": {"f": "#ffffff", "fo": 0.0, "s": "#ffffff", "so": 1.0, "w": 4.54, "r": 5.0, "st": [{"s": "#ffffff", "so": 1.0, "w": 4.54, "cap": "square", "join": "bevel"}, {"s": "#adadad", "so": 1.0, "w": 3.78, "d": "6,4", "cap": "square", "join": "bevel"}], "ptile": {"src": "data/symbols/limite_uat_1_fill.png", "size": 64}}, "img": {"src": "data/symbols/limite_uat_1.png", "w": 20, "h": 20}}], "noLegend": false, "labels": {"size": 13.3, "color": "#cfca00", "family": "Open Sans", "bold": true, "italic": true, "halo": "#ffffff", "haloW": 3.8, "rules": [{"size": 13.3, "color": "#cfca00", "family": "Open Sans", "bold": true, "italic": true, "halo": "#ffffff", "haloW": 3.8}, {"size": 13.3, "color": "#00afff", "family": "Open Sans", "bold": true, "italic": true, "halo": "#ffffff", "haloW": 3.8}], "max": 1500, "angled": false, "inside": true}, "cluster": false, "opacity": 1.0}, {"type": "xyz", "url": "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", "maxZoom": 21, "name": "Google Satellite", "visible": true, "opacity": 1.0}, {"type": "xyz", "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "maxZoom": 21, "minZoom": 0, "name": "OSM Standard", "visible": true, "opacity": 1.0}]};
 
 proj4.defs("EPSG:3844",
   "+proj=sterea +lat_0=46 +lon_0=25 +k=0.99975 +x_0=500000 +y_0=500000 +ellps=krass " +
@@ -4274,6 +4315,14 @@ document.getElementById("drawhide").addEventListener("click", () => {
   document.getElementById("drawpanel").classList.remove("on");
 });
 
+document.getElementById("syncsave").addEventListener("click", saveToRepo);
+document.getElementById("syncload").addEventListener("click", listFromRepo);
+document.getElementById("tokenok").addEventListener("click",
+  () => closeToken(document.getElementById("tokeninput").value.trim()));
+document.getElementById("tokencancel").addEventListener("click", () => closeToken(""));
+
+if (syncCfg()) document.getElementById("synctools").classList.add("on");
+
 if (W.draw) {
   toolButton("point", "Desenează punct", b => setDrawMode("point", b)).classList
     .add("drawbtn");
@@ -4284,6 +4333,164 @@ if (W.draw) {
   renderPalette();
   loadDrawn();
   updateUndoButton();
+}
+
+
+/* salvarea desenului în repository ---------------------------------------- */
+// Pagina publicată NU conține niciun token: fiecare contribuitor introduce
+// propriul token GitHub, păstrat doar în browserul lui. Altfel oricine ar putea
+// scrie în repository, iar GitHub ar revoca automat un token publicat în cod.
+
+const TOKEN_KEY = "ghpages.token." + (location.pathname || "/");
+
+function syncCfg() { return CFG.sync || null; }
+
+function storedToken() {
+  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (err) { return ""; }
+}
+
+function askToken(message) {
+  const dlg = document.getElementById("tokendlg");
+  const input = document.getElementById("tokeninput");
+  document.getElementById("tokenmsg").textContent = message ||
+    "Introduceți un token GitHub cu drept de scriere în repository. " +
+    "Rămâne doar în acest browser.";
+  input.value = storedToken();
+  dlg.classList.add("on");
+  return new Promise(resolve => { tokenResolve = resolve; });
+}
+let tokenResolve = null;
+
+function closeToken(value) {
+  document.getElementById("tokendlg").classList.remove("on");
+  if (tokenResolve) { tokenResolve(value); tokenResolve = null; }
+}
+
+function ghHeaders(token) {
+  return { "Authorization": "Bearer " + token,
+           "Accept": "application/vnd.github+json",
+           "X-GitHub-Api-Version": "2022-11-28" };
+}
+
+function b64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = "";
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin);
+}
+
+function syncName(user) {
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+  const who = (user || "anonim").replace(/[^\w.-]+/g, "_");
+  return "desen_" + who + "_" + stamp + ".geojson";
+}
+
+async function saveToRepo() {
+  const cfg = syncCfg();
+  if (!cfg) return;
+  if (!drawn.length) { alert("Nu ați desenat încă nimic."); return; }
+
+  let token = storedToken();
+  if (!token) {
+    token = await askToken();
+    if (!token) return;
+  }
+  const status = document.getElementById("syncstatus");
+  const setStatus = text => { if (status) status.textContent = text; };
+
+  try {
+    setStatus("se verifică accesul…");
+    const who = await fetch("https://api.github.com/user", { headers: ghHeaders(token) });
+    if (!who.ok) {
+      try { localStorage.removeItem(TOKEN_KEY); } catch (err) { /* ignoră */ }
+      setStatus("");
+      alert("Token respins de GitHub. Verificați-l și încercați din nou.");
+      return;
+    }
+    const user = (await who.json()).login;
+    try { localStorage.setItem(TOKEN_KEY, token); } catch (err) { /* ignoră */ }
+
+    const name = syncName(user);
+    const path = (cfg.folder ? cfg.folder.replace(/^\/+|\/+$/g, "") + "/" : "") + name;
+    const url = "https://api.github.com/repos/" + cfg.owner + "/" + cfg.repo +
+                "/contents/" + path;
+    const payload = {
+      message: "Desen din harta publicată (" + user + ")",
+      content: b64(JSON.stringify(drawnGeoJson(false), null, 1)),
+      branch: cfg.branch || "main"
+    };
+    setStatus("se trimite…");
+    const res = await fetch(url, { method: "PUT", headers: ghHeaders(token),
+                                   body: JSON.stringify(payload) });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setStatus("");
+      alert("Salvarea a eșuat: " + (body.message || res.status));
+      return;
+    }
+    setStatus("salvat ca " + name);
+    setTimeout(() => setStatus(""), 6000);
+  } catch (err) {
+    setStatus("");
+    alert("Salvarea a eșuat: " + err.message);
+  }
+}
+
+async function listFromRepo() {
+  const cfg = syncCfg();
+  if (!cfg) return;
+  const folder = (cfg.folder || "").replace(/^\/+|\/+$/g, "");
+  const base = "https://api.github.com/repos/" + cfg.owner + "/" + cfg.repo +
+               "/contents/" + folder;
+  const status = document.getElementById("syncstatus");
+  try {
+    if (status) status.textContent = "se citește…";
+    const headers = {};
+    const token = storedToken();
+    if (token) Object.assign(headers, ghHeaders(token));
+    const res = await fetch(base + "?ref=" + encodeURIComponent(cfg.branch || "main"),
+                            { headers: headers });
+    if (!res.ok) {
+      if (status) status.textContent = "";
+      alert(res.status === 404
+        ? "Nu există încă desene salvate în repository."
+        : "Nu s-a putut citi lista: " + res.status);
+      return;
+    }
+    const files = (await res.json()).filter(f => /\.geojson$/i.test(f.name));
+    if (!files.length) {
+      if (status) status.textContent = "niciun desen salvat";
+      return;
+    }
+    let added = 0;
+    for (const file of files.slice(0, 40)) {
+      const data = await fetch(file.download_url).then(r => r.json()).catch(() => null);
+      if (!data || !data.features) continue;
+      data.features.forEach(f => {
+        const g = f.geometry || {};
+        const p = f.properties || {};
+        const type = g.type === "Point" ? "point"
+                   : (g.type === "LineString" ? "line"
+                   : (g.type === "Polygon" ? "polygon" : null));
+        if (!type) return;
+        const coords = type === "point" ? [g.coordinates]
+                     : (type === "polygon" ? g.coordinates[0].slice(0, -1)
+                                           : g.coordinates);
+        addDrawn({ id: drawSeq++, type: type,
+          latlngs: coords.map(c => ({ lat: c[1], lng: c[0] })),
+          props: { name: p.nume || file.name.replace(/\.geojson$/i, ""),
+                   note: p.observatii || "", color: p.culoare || "#1f5f8b" } });
+        added++;
+      });
+    }
+    if (status) {
+      status.textContent = added + " elemente aduse din repository";
+      setTimeout(() => { status.textContent = ""; }, 6000);
+    }
+  } catch (err) {
+    if (status) status.textContent = "";
+    alert("Citirea a eșuat: " + err.message);
+  }
 }
 
 /* panoul de straturi ----------------------------------------------------- */
